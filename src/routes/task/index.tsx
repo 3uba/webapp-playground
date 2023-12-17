@@ -23,26 +23,53 @@ export default component$(() => {
             return;
         }
         messageAlert.message = message;
-        messageAlert.isVisible = true;
         messageAlert.type = alertType;
+        messageAlert.isVisible = true;
+        console.log({alertType})
         setTimeout(()=> {
             messageAlert.isVisible = false
         },3500);
     })
 
+    const notify = $((action) => {
+        switch (action) {
+            case 'changedNetwork':
+                showAlert("Successfully changed network", AlertType.Success)
+                break;
+            case 'changedAddress':
+                showAlert("Successfully changed address", AlertType.Success)
+                break;
+            case 'connected':
+                showAlert("Connected successfully", AlertType.Success)
+                break;
+            case 'disconnected':
+                showAlert("Disconnected successfully", AlertType.Success)
+                break;
+            default:
+                break;
+        }
+    })
+
     const openModal = $(() => {
         if (modalWasOpened.value === 0) {
             modal.subscribeProvider((provider) => {
+                const before = user.value
+
                 user.value = {
                     address: provider.address ?? "",
                     network: provider.chainId ?? 0
                 }
 
-                if (user.value.address != "") {
-                    showAlert("Connected successfully", AlertType.Success)
-                }
-                if (user.value.address == "") {
-                    showAlert("Disconnected successfully", AlertType.Success)
+                if (user.value.address == before.address
+                    && user.value.network != before.network) {
+                    notify('changedNetwork');
+                } else if (user.value.address != before.address
+                    && user.value.network == before.network) {
+                    notify('changedAddress');
+                } else if (user.value.address != "") {
+                    notify('connected');
+                } else if (user.value.address == "") {
+                    notify('disconnected');
                 }
             })
             modalWasOpened.value = 1
