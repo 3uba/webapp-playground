@@ -1,4 +1,4 @@
-import {component$, $, useSignal, useContext, useStore} from "@builder.io/qwik";
+import {component$, $, useSignal, useContext, useStore, useVisibleTask$} from "@builder.io/qwik";
 import modal from "../../tools/modal";
 import {UserContext} from "~/root";
 
@@ -15,8 +15,31 @@ interface IMessageAlert {
 
 export default component$(() => {
     const user = useContext(UserContext)
-    const modalWasOpened = useSignal(0)
     const messageAlert = useStore<IMessageAlert>({ message: "", isVisible: false, type: AlertType.Success })
+
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(() => {
+        modal.subscribeProvider((provider) => {
+            const before = user.value
+
+            user.value = {
+                address: provider.address ?? "",
+                network: provider.chainId ?? 0
+            }
+
+            if (user.value.address == before.address
+                && user.value.network != before.network) {
+                notify('changedNetwork');
+            } else if (user.value.address != before.address
+                && user.value.network == before.network) {
+                notify('changedAddress');
+            } else if (user.value.address != "") {
+                notify('connected');
+            } else if (user.value.address == "") {
+                notify('disconnected');
+            }
+        })
+    })
 
     const showAlert = $((message: string, alertType: AlertType) => {
         if (messageAlert.isVisible) {
@@ -51,29 +74,6 @@ export default component$(() => {
     })
 
     const openModal = $(() => {
-        if (modalWasOpened.value === 0) {
-            modal.subscribeProvider((provider) => {
-                const before = user.value
-
-                user.value = {
-                    address: provider.address ?? "",
-                    network: provider.chainId ?? 0
-                }
-
-                if (user.value.address == before.address
-                    && user.value.network != before.network) {
-                    notify('changedNetwork');
-                } else if (user.value.address != before.address
-                    && user.value.network == before.network) {
-                    notify('changedAddress');
-                } else if (user.value.address != "") {
-                    notify('connected');
-                } else if (user.value.address == "") {
-                    notify('disconnected');
-                }
-            })
-            modalWasOpened.value = 1
-        }
         modal.open()
     })
 
@@ -94,10 +94,10 @@ export default component$(() => {
             </div>
 
             <div class={`${!messageAlert.isVisible ? 'hidden' : ''} mt-2 mb-2 mx-4 flex items-center p-4 text-sm text-${messageAlert.type}-800 border border-${messageAlert.type}-300 rounded-lg bg-${messageAlert.type}-50 dark:bg-gray-800 dark:text-${messageAlert.type}-400 dark:border-${messageAlert.type}-800`} role="alert">
-                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 20 20">
                     <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
                 </svg>
-                <span class="font-medium">{messageAlert.message}</span>
+                <span class="font-medium text-white">{messageAlert.message}</span>
             </div>
         </div>
     );
