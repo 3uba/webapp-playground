@@ -1,6 +1,7 @@
 import {createWeb3Modal, defaultConfig} from "@web3modal/ethers5";
 
 const projectId = import.meta.env.PUBLIC_WALLET_CONNECT_KEY;
+const alchemyApiKey = import.meta.env.PUBLIC_ALCHEMY_API_KEY;
 
 const mainnet = {
     chainId: 1,
@@ -8,6 +9,14 @@ const mainnet = {
     currency: 'ETH',
     explorerUrl: 'https://etherscan.io',
     rpcUrl: 'https://cloudflare-eth.com'
+}
+
+const sepolia = {
+    chainId: 11155111,
+    name: 'Sepolia',
+    currency: 'SepoliaETH',
+    explorerUrl: 'https://sepolia.etherscan.io/',
+    rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/' + alchemyApiKey
 }
 
 const metadata = {
@@ -19,7 +28,7 @@ const metadata = {
 
 const web3modal = createWeb3Modal({
     ethersConfig: defaultConfig({ metadata }),
-    chains: [mainnet],
+    chains: [mainnet, sepolia],
     projectId
 });
 
