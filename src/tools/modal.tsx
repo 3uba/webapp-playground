@@ -1,6 +1,4 @@
 import {createWeb3Modal, defaultConfig} from "@web3modal/ethers5";
-import {useContext, useSignal} from "@builder.io/qwik";
-import {UserContext} from "~/root";
 
 const projectId = import.meta.env.PUBLIC_WALLET_CONNECT_KEY;
 

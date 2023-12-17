@@ -8,12 +8,17 @@ import { RouterHead } from "./components/router-head/router-head";
 
 import "./global.css";
 
-export const UserContext = createContextId<Signal<object>>(
+export interface IUser {
+    network: number;
+    address: string;
+}
+
+export const UserContext = createContextId<Signal<IUser>>(
     'docs.user-context',
 )
 
 export default component$(() => {
-    const user = useSignal({ network: 0, address: "" });
+    const user = useSignal<IUser>({ network: 0, address: "" });
     useContextProvider(UserContext, user);
 
     return (

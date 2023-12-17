@@ -1,4 +1,4 @@
-import {component$, $, useSignal, Signal, useTask$, useContext, useStore} from "@builder.io/qwik";
+import {component$, $, useSignal, useContext, useStore} from "@builder.io/qwik";
 import modal from "../../tools/modal";
 import {UserContext} from "~/root";
 
@@ -7,10 +7,16 @@ export enum AlertType {
     Error = "red",
 }
 
+interface IMessageAlert {
+    message: string;
+    isVisible: boolean;
+    type: AlertType;
+}
+
 export default component$(() => {
     const user = useContext(UserContext)
     const modalWasOpened = useSignal(0)
-    const messageAlert = useStore({ message: "", isVisible: false, type: AlertType })
+    const messageAlert = useStore<IMessageAlert>({ message: "", isVisible: false, type: AlertType.Success })
 
     const showAlert = $((message: string, alertType: AlertType) => {
         if (messageAlert.isVisible) {
@@ -19,7 +25,6 @@ export default component$(() => {
         messageAlert.message = message;
         messageAlert.isVisible = true;
         messageAlert.type = alertType;
-        console.log(messageAlert)
         setTimeout(()=> {
             messageAlert.isVisible = false
         },3500);
