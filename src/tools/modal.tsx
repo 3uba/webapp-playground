@@ -17,10 +17,10 @@ const metadata = {
     icons: ['https://avatars.test.com/']
 }
 
-const modal = createWeb3Modal({
+const web3modal = createWeb3Modal({
     ethersConfig: defaultConfig({ metadata }),
     chains: [mainnet],
     projectId
 });
 
-export default modal
+export default web3modal

@@ -1,80 +1,72 @@
-import {component$, $, useSignal, useContext, useStore, useVisibleTask$} from "@builder.io/qwik";
-import modal from "../../tools/modal";
+import {component$, $, useContext, useStore, useVisibleTask$} from "@builder.io/qwik";
+import web3modal from "../../tools/modal";
 import {UserContext} from "~/root";
+import {Alert, AlertType, IAlert} from "~/components/alert";
 
-export enum AlertType {
-    Success = "green",
-    Error = "red",
-}
-
-interface IMessageAlert {
-    message: string;
-    isVisible: boolean;
-    type: AlertType;
+enum WalletActionsMessages {
+    ChangedNetwork = "Successfully changed network",
+    ChangedAddress = "Successfully changed address",
+    Connected = "Connected successfully",
+    Disconnected = "Disconnected successfully",
 }
 
 export default component$(() => {
     const user = useContext(UserContext)
-    const messageAlert = useStore<IMessageAlert>({ message: "", isVisible: false, type: AlertType.Success })
+    const messageAlerts = useStore<IAlert[]>([]);
 
-    // eslint-disable-next-line qwik/no-use-visible-task
-    useVisibleTask$(() => {
-        modal.subscribeProvider((provider) => {
-            const before = user.value
+    const addAlert = $((message: string, alertType: AlertType) => {
+        const alert: IAlert = {
+            message,
+            isVisible: true,
+            type: alertType,
+        };
 
-            user.value = {
-                address: provider.address ?? "",
-                network: provider.chainId ?? 0
-            }
+        messageAlerts.push(alert);
 
-            if (user.value.address == before.address
-                && user.value.network != before.network) {
-                notify('changedNetwork');
-            } else if (user.value.address != before.address
-                && user.value.network == before.network) {
-                notify('changedAddress');
-            } else if (user.value.address != "") {
-                notify('connected');
-            } else if (user.value.address == "") {
-                notify('disconnected');
-            }
-        })
-    })
-
-    const showAlert = $((message: string, alertType: AlertType) => {
-        if (messageAlert.isVisible) {
-            return;
-        }
-        messageAlert.message = message;
-        messageAlert.type = alertType;
-        messageAlert.isVisible = true;
-        console.log({alertType})
         setTimeout(()=> {
-            messageAlert.isVisible = false
+            messageAlerts.shift()
         },3500);
     })
 
-    const notify = $((action) => {
-        switch (action) {
-            case 'changedNetwork':
-                showAlert("Successfully changed network", AlertType.Success)
-                break;
-            case 'changedAddress':
-                showAlert("Successfully changed address", AlertType.Success)
-                break;
-            case 'connected':
-                showAlert("Connected successfully", AlertType.Success)
-                break;
-            case 'disconnected':
-                showAlert("Disconnected successfully", AlertType.Success)
-                break;
-            default:
-                break;
+    const subscribeProviderHandler = $((provider) => {
+        const before = user.value
+
+        user.value = {
+            address: provider.address ?? "",
+            network: provider.chainId ?? 0
+        }
+
+        if (user.value.address == before.address
+            && user.value.network != before.network) {
+            return addAlert(WalletActionsMessages.ChangedNetwork, AlertType.Success);
+        }
+
+        if (user.value.address != before.address
+            && user.value.network == before.network) {
+            return addAlert(WalletActionsMessages.ChangedAddress, AlertType.Success);
+        }
+
+        if (user.value.address != "") {
+            return addAlert(WalletActionsMessages.Connected, AlertType.Success);
+        }
+
+        if (user.value.address == "") {
+            return addAlert(WalletActionsMessages.Disconnected, AlertType.Success);
         }
     })
 
+    // eslint-disable-next-line qwik/no-use-visible-task
+    useVisibleTask$(() => {
+        user.value = {
+            address: web3modal.getAddress() ?? "",
+            network: web3modal.getState().selectedNetworkId ?? 0
+        }
+
+        web3modal.subscribeProvider(subscribeProviderHandler)
+    })
+
     const openModal = $(() => {
-        modal.open()
+        web3modal.open()
     })
 
     return (
@@ -93,11 +85,10 @@ export default component$(() => {
                 ) : <div class={"text-white"}>Not connected yet</div> }
             </div>
 
-            <div class={`${!messageAlert.isVisible ? 'hidden' : ''} mt-2 mb-2 mx-4 flex items-center p-4 text-sm text-${messageAlert.type}-800 border border-${messageAlert.type}-300 rounded-lg bg-${messageAlert.type}-50 dark:bg-gray-800 dark:text-${messageAlert.type}-400 dark:border-${messageAlert.type}-800`} role="alert">
-                <svg class="flex-shrink-0 inline w-4 h-4 me-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 20 20">
-                    <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
-                </svg>
-                <span class="font-medium text-white">{messageAlert.message}</span>
+            <div>
+                {messageAlerts.map((alert, index) => (
+                    <Alert key={index} alert={alert} />
+                ))}
             </div>
         </div>
     );
