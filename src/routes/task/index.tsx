@@ -4,8 +4,10 @@ import {UserContext} from "~/root";
 import {Alert, AlertType, IAlert} from "~/components/alert";
 import { routeLoader$ } from '@builder.io/qwik-city';
 import type { InitialValues, SubmitHandler } from '@modular-forms/qwik';
-import { formAction$, useForm, valiForm$ } from '@modular-forms/qwik';
+import {formAction$, useForm, valiForm$} from '@modular-forms/qwik';
 import {SwapForm, SwapSchema} from "~/components/form/swap";
+import {ethers} from "ethers";
+import {uniswapSwapRouterAbi} from "~/resources/abi/uniswap_swap_router_abi";
 
 enum WalletActionsMessages {
     ChangedNetwork = "Successfully changed network",
@@ -15,7 +17,7 @@ enum WalletActionsMessages {
 }
 
 export const useFormLoader = routeLoader$<InitialValues<SwapForm>>(() => ({
-    swapAmount: '',
+    swapAmount: 0,
 }));
 
 export const useFormAction = formAction$<SwapForm>(() => {});
@@ -75,10 +77,36 @@ export default component$(() => {
         web3modal.subscribeProvider(subscribeProviderHandler)
     })
 
-    const swapHandler: QRL<SubmitHandler<SwapForm>> = $((values, event) => {
+    const swapHandler: QRL<SubmitHandler<SwapForm>> = $(async (values, event) => {
         addAlert("Start swapping...", AlertType.Info)
-        // sweepToken (0xdf2ab5bb)
-        console.log(values.swapAmount)
+        try {
+            const walletProvider = web3modal?.getWalletProvider();
+            if (walletProvider == null) {
+                return addAlert("Please connect wallet", AlertType.Error);
+            }
+            const provider = new ethers.providers.Web3Provider(walletProvider);
+            const contract = new ethers.Contract(
+                "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+                uniswapSwapRouterAbi,
+                provider.getSigner()
+            );
+
+            const result = await contract.sweepToken(
+                "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984",
+                1,
+                user.value.address,
+                {
+                    value: ethers.utils.parseEther(values.swapAmount.toString()),
+                    gasLimit: 5000000
+                }
+            )
+            console.log(result)
+
+            addAlert(`Swapped successfully, ${result}`, AlertType.Success)
+        } catch (e) {
+            console.log(e)
+            addAlert(e.message, AlertType.Error)
+        }
     })
 
     const openModal = $(() => {

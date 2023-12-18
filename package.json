@@ -45,7 +45,7 @@
   "dependencies": {
     "@modular-forms/qwik": "^0.22.0",
     "@web3modal/ethers5": "^3.5.0",
-    "ethers": "^5.7.2",
+    "ethers": "5.7",
     "valibot": "^0.24.1"
   }
 }

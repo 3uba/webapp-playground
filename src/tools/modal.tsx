@@ -19,6 +19,14 @@ const sepolia = {
     rpcUrl: 'https://eth-sepolia.g.alchemy.com/v2/' + alchemyApiKey
 }
 
+const goerli = {
+    chainId: 5,
+    name: 'Goerli',
+    currency: 'ETH',
+    explorerUrl: 'https://goerli.etherscan.io',
+    rpcUrl: 'https://gateway.tenderly.co/public/goerli',
+};
+
 const metadata = {
     name: 'My Test Website',
     description: 'Test',
@@ -28,7 +36,7 @@ const metadata = {
 
 const web3modal = createWeb3Modal({
     ethersConfig: defaultConfig({ metadata }),
-    chains: [mainnet, sepolia],
+    chains: [mainnet, sepolia, goerli],
     projectId
 });
 
