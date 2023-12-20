@@ -1,41 +1,33 @@
-import {$, component$, type QRL, useContext, useSignal, useStore, useVisibleTask$} from "@builder.io/qwik";
+import {$, component$, type QRL, useContext, useSignal, useStore, useTask$, useVisibleTask$} from "@builder.io/qwik";
 import web3modal from "../../tools/modal";
 import {UserContext} from "~/root";
 import type {IAlert} from "~/components/common/alert";
 import {Alert} from "~/components/common/alert";
 import {AlertType} from "~/resources/enums/AlertType";
-import type {SubmitHandler, InitialValues} from '@modular-forms/qwik';
-import {formAction$, useForm, valiForm$} from '@modular-forms/qwik';
-import type {SwapForm} from "~/components/task/form/swap";
-import { SwapSchema} from "~/components/task/form/swap";
 import {ethers} from "ethers";
 import {contractSwapAbi} from "~/resources/consts/abi/ContractSwapAbi";
 import {erc20Abi} from "~/resources/consts/abi/Erc20Abi";
 import {WalletActionsMessages} from "~/resources/enums/WalletActions";
-import {routeLoader$} from "@builder.io/qwik-city";
 import {Button} from "~/components/common/button";
-import {SwapButton} from "~/components/task/form/components/swapButton";
+import {SwapButton} from "~/components/task/components/swapButton";
 import {Box} from "~/components/common/box";
 import {WalletBox} from "~/components/task/block/wallet";
 import {Label} from "~/components/common/label";
-import {TokenSelect} from "~/components/task/form/components/tokenSelect";
+import {TokenSelect} from "~/components/task/components/tokenSelect";
 import {Tokens} from "~/resources/consts/tokens/Tokens";
-import {Token} from "~/resources/enums/Token";
 
 export const CONTRACT_ADDR = "0x2F46127F6E03384e1cd1d5866360c8eB8D417884"
-
-export const useFormLoader = routeLoader$<InitialValues<SwapForm>>(() => ({
-    swapAmountIn: 0,
-    swapIn: Token.WETH,
-    swapOut: Token.UNI,
-}));
-
-export const useFormAction = formAction$<SwapForm>(() => {}, valiForm$(SwapSchema));
 
 export default component$(() => {
     const user = useContext(UserContext)
     const messageAlerts = useStore<IAlert[]>([]);
     const isSwapping = useSignal<boolean>(false);
+    const tokenDataPrice = useSignal(null);
+
+    const tokenInValue = useSignal(0);
+    const tokenIn = useSignal(Tokens.WETH.tokenName);
+    const tokenOutValue = useSignal(0);
+    const tokenOut = useSignal(Tokens.UNI.tokenName);
 
     const addAlert = $((message: string, alertType: AlertType) => {
         const alert: IAlert = {
@@ -81,7 +73,10 @@ export default component$(() => {
     })
 
     // eslint-disable-next-line qwik/no-use-visible-task
-    useVisibleTask$(() => {
+    useVisibleTask$(async () => {
+        let res = await fetch(`https://api.geckoterminal.com/api/v2/networks/goerli-testnet/pools/0x28cee28a7c4b4022ac92685c07d2f33ab1a0e122?include=${Tokens.WETH.address}`)
+        tokenDataPrice.value = {...await res.json()}
+
         user.value = {
             address: web3modal.getAddress() ?? "",
             network: web3modal.getState().selectedNetworkId ?? 0
@@ -90,16 +85,15 @@ export default component$(() => {
         web3modal.subscribeProvider(subscribeProviderHandler)
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const swapHandler: QRL<SubmitHandler<SwapForm>> = $(async (values, event) => {
+    const swapHandler = $(async () => {
         try {
             const walletProvider = web3modal.getWalletProvider();
             if (walletProvider == null) {
                 return addAlert("Please connect wallet", AlertType.Error);
             }
 
-            const swapInToken = Tokens[values.swapIn as keyof typeof Tokens]
-            const swapOutToken = Tokens[values.swapOut as keyof typeof Tokens]
+            const swapInToken = Tokens[tokenIn.value as keyof typeof Tokens]
+            const swapOutToken = Tokens[tokenOut.value as keyof typeof Tokens]
             if (swapInToken.tokenName == swapOutToken.tokenName) {
                 return addAlert("You can't swap token for the same token", AlertType.Error);
             }
@@ -107,7 +101,7 @@ export default component$(() => {
             isSwapping.value = true;
 
             const provider = new ethers.providers.Web3Provider(walletProvider);
-            const amount = ethers.utils.parseUnits(values.swapAmountIn.toString(), 18)
+            const amount = ethers.utils.parseUnits(tokenInValue.value.toString(), 18)
             const tokenFromContract = new ethers.Contract(swapInToken.address, erc20Abi, provider.getSigner());
             const res = await tokenFromContract.approve(
                 CONTRACT_ADDR,
@@ -143,12 +137,19 @@ export default component$(() => {
         web3modal.open()
     })
 
-    // eslint-disable-next-line
-    const [swapForm, { Form, Field }] = useForm<SwapForm>({
-        loader: useFormLoader(),
-        action: useFormAction(),
-        validate: valiForm$(SwapSchema),
-    });
+    useTask$(async ({ track }) => {
+        track(() => {
+            if (!tokenDataPrice.value) {
+                tokenOutValue.value = 0
+            } else {
+                // only uni to weth
+                tokenOutValue.value =
+                    tokenIn.value == tokenOut.value
+                        ? tokenInValue.value
+                        : tokenInValue.value * tokenDataPrice.value?.data.attributes[tokenIn.value == "UNI" ? "base_token_price_quote_token" : "quote_token_price_base_token"]
+            }
+        })
+    })
 
     return (
         <div class={"bg-black h-screen p-4"}>
@@ -158,36 +159,36 @@ export default component$(() => {
             <WalletBox user={user.value} />
             <Box title={"Swap"}>
                 <div q:slot={"children"}>
-                    <Form onSubmit$={swapHandler} class={'w-full'}>
+                    <div onSubmit$={swapHandler} class={'w-full'}>
                         <Label labelFor="amountOut" text="Choose token to swap" />
                         <div class={"flex flex-row w-full items-end mb-2"}>
-                            <Field name="swapIn" type={'string'}>
-                                {(field, props) => (
-                                    <TokenSelect fieldProps={props} fieldValue={field.value} />
-                                )}
-                            </Field>
-                            <Field name="swapAmountIn" type={'number'}>
-                                {(field, props) => (
-                                    <div class={'w-64'}>
-                                        {field.error && <div class={"text-red-400 pb-1 text-sm"}>{field.error}</div>}
-                                        <input {...props} type="number" step={0.000001} value={field.value} class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"/>
-                                    </div>
-                                )}
-                            </Field>
+                            <div>
+                                <TokenSelect valueObj={tokenIn} />
+                            </div>
+                            <div>
+                                <div class={'w-64'}>
+                                    <input
+                                        type="number"
+                                        step={0.000001}
+                                        bind:value={tokenInValue}
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
                         <Label labelFor="amountOut" text="Choose token to receive" />
                         <div class={"flex flex-row w-full items-end mb-2"}>
-                            <Field name="swapOut" type={'string'}>
-                                {(field, props) => (
-                                    <TokenSelect fieldProps={props} fieldValue={field.value} />
-                                )}
-                            </Field>
+                            <div>
+                                <TokenSelect valueObj={tokenOut} />
+                            </div>
                             <div class={'w-64'}>
-                                <input disabled type="number" class="bg-gray-150 border border-gray-300 text-gray-600 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-900 dark:border-gray-600 dark:placeholder-gray-400 dark:text-gray-400 dark:focus:ring-blue-500 dark:focus:border-blue-500"/>
+                                <div class="bg-gray-150 border border-gray-300 text-gray-600 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-900 dark:border-gray-600 dark:placeholder-gray-400 dark:text-gray-400 dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                                    {tokenOutValue}
+                                </div>
                             </div>
                         </div>
-                        <SwapButton isSwapping={isSwapping.value} />
-                    </Form>
+                        <SwapButton onClick$={swapHandler} disabled={isSwapping.value} />
+                    </div>
                 </div>
             </Box>
 
