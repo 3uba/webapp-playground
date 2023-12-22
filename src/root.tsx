@@ -1,4 +1,4 @@
-import {component$, createContextId, Signal, useContextProvider, useSignal} from "@builder.io/qwik";
+import {component$, createContextId, Signal, useContextProvider, useSignal, useStore} from "@builder.io/qwik";
 import {
   QwikCityProvider,
   RouterOutlet,
@@ -7,6 +7,8 @@ import {
 import { RouterHead } from "./components/router-head/router-head";
 
 import "./global.css";
+import {Alert, IAlert} from "~/components/common/alert";
+import NotificationBox from "~/components/common/notification-box";
 
 export interface IUser {
     network: number;
@@ -17,9 +19,16 @@ export const UserContext = createContextId<Signal<IUser>>(
     'docs.user-context',
 )
 
+export const NotificationContext = createContextId<IAlert[]>(
+    'docs.notification-context'
+)
+
 export default component$(() => {
     const user = useSignal<IUser>({ network: 0, address: "" });
     useContextProvider(UserContext, user);
+
+    const notifications = useStore<IAlert[]>([]);
+    useContextProvider(NotificationContext, notifications)
 
     return (
         <QwikCityProvider>
@@ -31,6 +40,7 @@ export default component$(() => {
             </head>
             <body lang="en">
                 <RouterOutlet />
+                <NotificationBox />
             </body>
         </QwikCityProvider>
     );

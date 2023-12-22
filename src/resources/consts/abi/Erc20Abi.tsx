@@ -1,4 +1,4 @@
-export const erc20Abi =
+export const ERC_20_ABI =
 [
     {
         "constant": true,

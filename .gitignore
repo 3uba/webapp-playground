@@ -39,4 +39,3 @@ lerna-debug.log*
 .yarn/*
 !.yarn/releases
 yarn.lock
-contracts

@@ -1,4 +1,4 @@
-export const contractSwapAbi =
+export const CONTRACT_SWAP_ABI =
 [
     {
         "inputs": [],
