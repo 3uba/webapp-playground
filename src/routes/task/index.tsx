@@ -130,9 +130,9 @@ export default component$(() => {
                 provider.getSigner()
             );
             const swap = await contract.swap(
+                amount,
                 swapInToken.address,
                 swapOutToken.address,
-                amount
             );
             if (!swap.hash) {
                 return addAlert("Swapping failed", AlertType.Error)
