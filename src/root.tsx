@@ -1,4 +1,4 @@
-import { component$ } from "@builder.io/qwik";
+import {component$, createContextId, Signal, useContextProvider, useSignal, useStore} from "@builder.io/qwik";
 import {
   QwikCityProvider,
   RouterOutlet,
@@ -7,26 +7,41 @@ import {
 import { RouterHead } from "./components/router-head/router-head";
 
 import "./global.css";
+import {Alert, IAlert} from "~/components/common/alert";
+import NotificationBox from "~/components/common/notification-box";
+
+export interface IUser {
+    network: number;
+    address: string;
+}
+
+export const UserContext = createContextId<Signal<IUser>>(
+    'docs.user-context',
+)
+
+export const NotificationContext = createContextId<IAlert[]>(
+    'docs.notification-context'
+)
 
 export default component$(() => {
-  /**
-   * The root of a QwikCity site always start with the <QwikCityProvider> component,
-   * immediately followed by the document's <head> and <body>.
-   *
-   * Don't remove the `<head>` and `<body>` elements.
-   */
+    const user = useSignal<IUser>({ network: 0, address: "" });
+    useContextProvider(UserContext, user);
 
-  return (
-    <QwikCityProvider>
-      <head>
-        <meta charSet="utf-8" />
-        <link rel="manifest" href="/manifest.json" />
-        <RouterHead />
-        <ServiceWorkerRegister />
-      </head>
-      <body lang="en">
-        <RouterOutlet />
-      </body>
-    </QwikCityProvider>
-  );
+    const notifications = useStore<IAlert[]>([]);
+    useContextProvider(NotificationContext, notifications)
+
+    return (
+        <QwikCityProvider>
+            <head>
+                <meta charSet="utf-8" />
+                <link rel="manifest" href="/manifest.json" />
+                <RouterHead />
+                <ServiceWorkerRegister />
+            </head>
+            <body lang="en">
+                <RouterOutlet />
+                <NotificationBox />
+            </body>
+        </QwikCityProvider>
+    );
 });
